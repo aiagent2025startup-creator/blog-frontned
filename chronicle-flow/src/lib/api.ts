@@ -2,7 +2,15 @@
  * Utility functions for making authenticated API calls
  */
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Use Vite environment variable when available (typed via `src/vite-env.d.ts`), default to Render backend
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+
+// Normalize base url to ensure there's no trailing slash before adding `/api`
+function normalizeBaseUrl(base?: string) {
+  if (!base) return 'https://blog-backend-fr96.onrender.com';
+  return base.replace(/\/$/, '');
+}
+export const API_BASE_URL = `${normalizeBaseUrl(VITE_API_URL)}/api`;
 
 export interface FetchOptions extends RequestInit {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -13,7 +21,7 @@ export interface FetchOptions extends RequestInit {
  */
 export async function apiCall(endpoint: string, options: FetchOptions = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
