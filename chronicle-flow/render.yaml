@@ -6,7 +6,7 @@ services:
     env: static
     branch: main
     # Run install & build within the `chronicle-flow` folder so Render uses the correct working directory
-    installCommand: "npm ci"
+    installCommand: "npm ci --prefer-offline --no-audit --no-fund --silent"
     buildCommand: "npm run build"
     # Where Vite writes the production files
     publishPath: "chronicle-flow/dist"
