@@ -1,0 +1,19 @@
+# Render deployment manifest for the frontend (chronicle-flow)
+# Doc: https://render.com/docs/render-yaml
+services:
+  - type: static_site
+    name: blog-frontned-frontend
+    env: static
+    branch: main
+    # Build from the `chronicle-flow` subfolder so Render finds package.json there
+    buildCommand: "npm --prefix chronicle-flow ci && npm --prefix chronicle-flow run build"
+    # Where Vite writes the production files
+    publishPath: "chronicle-flow/dist"
+    root: /
+    autoDeploy: true
+    plan: starter
+    envVars:
+      - key: VITE_API_URL
+        value: "https://blog-backend-fr96.onrender.com"
+      - key: NODE_VERSION
+        value: "18"
