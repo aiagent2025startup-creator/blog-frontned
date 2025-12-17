@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { BlogCard } from "@/components/blog/BlogCard";
 import { getTrendingBlogs, getTrendingInCategory } from "@/lib/trendingAlgorithm";
 import { toast } from "@/hooks/use-toast";
+import { getJson } from '@/lib/api';
 import { Blog } from "@/types/blog";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 
@@ -55,12 +56,8 @@ export default function Discover() {
     const fetchAndTrend = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/blogs/all', {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
+        const data = await getJson('/blogs/all');
+        if (data && data.success) {
           const rawBlogs = data.data || [];
           const normalizedBlogs = rawBlogs.map(normalizeBlog);
           setAllBlogs(normalizedBlogs);

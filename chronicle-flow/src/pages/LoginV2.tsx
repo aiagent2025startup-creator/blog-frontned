@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
+import { postJson, setAuthToken } from '@/lib/api';
 
 export default function LoginV2() {
   const [email, setEmail] = useState("");
@@ -56,14 +57,7 @@ export default function LoginV2() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
+      const data = await postJson('/users/login', { email, password });
 
       if (!res.ok) {
         toast({
@@ -106,6 +100,8 @@ export default function LoginV2() {
         description: `Logged in as ${userFromResponse.name}`,
       });
 
+      // If backend returns a token, store it for Authorization header usage
+      if (data?.token) setAuthToken(data.token);
       setIsLoading(false);
       navigate("/");
     } catch (error) {
@@ -132,14 +128,7 @@ export default function LoginV2() {
     setMobileLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/users/auth/mobile/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ phone }),
-      });
-
-      const data = await res.json();
+      const data = await postJson('/users/auth/mobile/send-otp', { phone });
 
       if (!res.ok) {
         toast({
@@ -181,14 +170,7 @@ export default function LoginV2() {
     setMobileLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/users/auth/mobile/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ phone, otp }),
-      });
-
-      const data = await res.json();
+      const data = await postJson('/users/auth/mobile/verify-otp', { phone, otp });
 
       if (!res.ok) {
         toast({

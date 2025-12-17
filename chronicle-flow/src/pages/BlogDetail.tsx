@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { getJson, deleteJson, postJson } from '@/lib/api';
 import { useUser } from "@/context/UserContext";
 import { ShareButton } from "@/components/ShareButton";
 import { Trash2, MessageCircle } from "lucide-react";
@@ -56,11 +57,8 @@ export default function BlogDetail() {
     const fetchBlog = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/blogs/${id}`, {
-          credentials: 'include',
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
+        const data = await getJson(`/blogs/${id}`);
+        if (data && data.success) {
           // Normalize shape if needed
           const b = data.data;
           const transformed = {
@@ -136,9 +134,8 @@ export default function BlogDetail() {
                     const ok = window.confirm('Are you sure you want to delete this blog? This action cannot be undone.');
                     if (!ok) return;
                     try {
-                      const res = await fetch(`http://localhost:5000/api/blogs/delete/${blog.id}`, { method: 'DELETE', credentials: 'include' });
-                      const json = await res.json();
-                      if (res.ok && json.success) {
+                      const json = await deleteJson(`/blogs/delete/${blog.id}`);
+                        if (json && json.success) {
                         toast({ title: 'Deleted', description: 'Blog deleted successfully.' });
                         navigate('/');
                       } else {
@@ -281,14 +278,7 @@ export default function BlogDetail() {
 
     setSubmittingComment(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/blogs/${blog.id}/comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ text: commentText }),
-      });
-
-      const data = await res.json();
+        const data = await postJson(`/blogs/${blog.id}/comment`, { text: commentText });
       if (res.ok && data.success) {
         // Update comments in local state
         setBlog((prev) => {
@@ -320,15 +310,8 @@ export default function BlogDetail() {
     if (!blog?.id) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/blogs/${blog.id}/comment`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ commentId }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await deleteJson(`/blogs/${blog.id}/comment`, { commentId });
+      if (data && data.success) {
         // Remove comment from local state
         setBlog((prev) => {
           if (!prev) return prev;

@@ -22,6 +22,8 @@ export interface RealtimeEvent {
   timestamp: string;
 }
 
+import { API_BASE_URL } from '@/lib/api';
+
 class RealtimeService {
   private eventSource: EventSource | null = null;
   private listeners: Map<EventType, Set<(data: any) => void>> = new Map();
@@ -39,10 +41,7 @@ class RealtimeService {
 
     try {
       // Connect to SSE endpoint on backend
-      this.eventSource = new EventSource(
-        'http://localhost:5000/api/events/stream',
-        { withCredentials: true }
-      );
+      this.eventSource = new EventSource(`${API_BASE_URL}/events/stream`, { withCredentials: true });
 
       this.eventSource.onopen = () => {
         console.log('✅ Real-time connection established');

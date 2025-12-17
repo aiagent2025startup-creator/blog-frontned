@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
+import { postJson, setAuthToken } from '@/lib/api';
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -78,19 +79,7 @@ export default function Login() {
 
     // Call login API endpoint
     try {
-      const response = await fetch("http://localhost:5000/api/users/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email: email.toLowerCase(),
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
+      const data = await postJson('/users/login', { email: email.toLowerCase(), password });
 
       if (!response.ok || !data.success) {
         toast({
@@ -136,6 +125,7 @@ export default function Login() {
         description: `You've successfully logged in as ${userFromResponse.name || userFromResponse.email}.`,
       });
 
+      if (data?.token) setAuthToken(data.token);
       setIsLoading(false);
       navigate("/");
     } catch (error) {

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
+import { putJson, API_BASE_URL } from '@/lib/api';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -41,17 +42,11 @@ export default function Settings() {
     setSaving(true);
     try {
       // Update profile data (simple PUT to profile update endpoint)
-      const res = await fetch(`http://localhost:5000/api/profiles/${user.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          firstName: name,
-          bio,
-        })
-      });
+      const resJson = await putJson(`/profiles/${user.id}`, { firstName: name, bio });
+      // If backend returned error shape, throw
+      if (!resJson || !resJson.success) {
+        throw new Error(resJson?.message || 'Failed to update profile');
+      }
       // Try to parse JSON; if response is HTML (doctype) or plain text, fallback to text
       let json: any = null;
       try {
@@ -72,7 +67,7 @@ export default function Settings() {
         const fd = new FormData();
         // Backend expects field name 'profilePicture' per upload middleware
         fd.append('profilePicture', avatarFile);
-        const up = await fetch(`http://localhost:5000/api/profiles/${user.id}/picture`, {
+        const up = await fetch(`${API_BASE_URL}/profiles/${user.id}/picture`, {
           method: 'POST',
           credentials: 'include',
           body: fd,

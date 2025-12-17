@@ -24,6 +24,7 @@ import { Blog } from "@/types/blog";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/context/UserContext";
+import { postJson, deleteJson } from '@/lib/api';
 
 interface BlogCardProps {
   blog: Blog;
@@ -77,15 +78,8 @@ export function BlogCard({ blog, isOwner = false }: BlogCardProps) {
 
     try {
       setSubmittingComment(true);
-      const res = await fetch(`http://localhost:5000/api/blogs/${blog.id}/comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ text: commentText }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await postJson(`/blogs/${blog.id}/comment`, { text: commentText });
+      if (data && data.success) {
         setCommentCountLocal((c) => c + 1);
         setCommentText('');
         toast({ title: 'Comment posted', description: 'Your comment was added.' });
@@ -140,10 +134,9 @@ export function BlogCard({ blog, isOwner = false }: BlogCardProps) {
                     if (!confirmed) return;
 
                     try {
-                      const res = await fetch(`http://localhost:5000/api/blogs/delete/${blog.id}`, { method: 'DELETE', credentials: 'include' });
-                      const json = await res.json();
+                      const json = await deleteJson(`/blogs/delete/${blog.id}`);
                       
-                      if (res.ok && json.success) {
+                      if (json && json.success) {
                         toast({ 
                           title: '✅ Blog Deleted', 
                           description: 'Your blog has been deleted successfully.' 

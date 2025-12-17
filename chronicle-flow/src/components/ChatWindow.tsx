@@ -8,6 +8,7 @@ import { useChat, Chat } from '@/hooks/useChat';
 import { useUser } from '@/context/UserContext';
 import { formatDistanceToNow } from 'date-fns';
 import { realtimeService } from '@/services/realtimeService';
+import { API_BASE_URL } from '@/lib/api';
 
 interface ChatWindowProps {
   chatId: string | null;
@@ -110,7 +111,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, onClose, onDelet
       const formData = new FormData();
       formData.append('image', file);
 
-      const uploadRes = await fetch(`http://localhost:5000/api/chats/${chatId}/upload-image`, {
+      const uploadRes = await fetch(`${API_BASE_URL}/chats/${chatId}/upload-image`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -143,14 +144,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, onClose, onDelet
       // Emit typing stop event to backend
       const otherParticipantId = chat.participants.find(p => p._id !== currentUser?.id)?._id;
       if (otherParticipantId) {
-        try {
-          await fetch(`http://localhost:5000/api/chats/${chatId}/typing-stop`, {
-            method: 'POST',
-            credentials: 'include',
-          });
-        } catch (e) {
-          console.error('Error sending typing stop:', e);
-        }
+          try {
+            await fetch(`${API_BASE_URL}/chats/${chatId}/typing-stop`, {
+              method: 'POST',
+              credentials: 'include',
+            });
+          } catch (e) {
+            console.error('Error sending typing stop:', e);
+          }
       }
       
       await sendMessage(messageText);
@@ -170,14 +171,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, onClose, onDelet
 
     // Emit typing events to backend
     if (text.length > 0) {
-      try {
-        fetch(`http://localhost:5000/api/chats/${chatId}/typing-start`, {
-          method: 'POST',
-          credentials: 'include',
-        }).catch(e => console.error('Error sending typing start:', e));
-      } catch (e) {
-        console.error('Error in typing start:', e);
-      }
+        try {
+          fetch(`${API_BASE_URL}/chats/${chatId}/typing-start`, {
+            method: 'POST',
+            credentials: 'include',
+          }).catch(e => console.error('Error sending typing start:', e));
+        } catch (e) {
+          console.error('Error in typing start:', e);
+        }
     }
 
     // Clear existing timeout and set new one
@@ -185,14 +186,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chatId, onClose, onDelet
     
     if (text.length > 0) {
       const timeout = setTimeout(() => {
-        try {
-          fetch(`http://localhost:5000/api/chats/${chatId}/typing-stop`, {
-            method: 'POST',
-            credentials: 'include',
-          }).catch(e => console.error('Error sending typing stop:', e));
-        } catch (e) {
-          console.error('Error in typing stop:', e);
-        }
+          try {
+            fetch(`${API_BASE_URL}/chats/${chatId}/typing-stop`, {
+              method: 'POST',
+              credentials: 'include',
+            }).catch(e => console.error('Error sending typing stop:', e));
+          } catch (e) {
+            console.error('Error in typing stop:', e);
+          }
         setTypingTimeout(null);
       }, 2000); // Stop typing after 2 seconds of inactivity
       setTypingTimeout(timeout);

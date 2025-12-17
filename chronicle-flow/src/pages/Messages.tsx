@@ -5,6 +5,7 @@ import { ChatList } from '@/components/ChatList';
 import { ChatWindow } from '@/components/ChatWindow';
 import { Button } from '@/components/ui/button';
 import { useChatList } from '@/hooks/useChatList';
+import { getJson } from '@/lib/api';
 import { useUser } from '@/context/UserContext';
 import { MessageCircle } from 'lucide-react';
 
@@ -105,11 +106,8 @@ function StartChatModal({ onClose, onChatCreated }: StartChatModalProps) {
     const fetchAllUsers = async () => {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:5000/api/users/all', {
-          credentials: 'include',
-        });
-        const json = await res.json();
-        if (json.success) {
+        const json = await getJson('/users/all');
+        if (json && json.success) {
           // Filter out current user
           const otherUsers = (json.data || []).filter((u: any) => u._id !== currentUser?.id);
           setUsers(otherUsers);

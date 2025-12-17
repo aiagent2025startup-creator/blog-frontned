@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getJson, postJson, deleteJson } from '@/lib/api';
 
 export interface ChatListItem {
   _id: string;
@@ -19,14 +20,11 @@ export function useChatList() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:5000/api/chats', {
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (json.success) {
+      const json = await getJson('/chats');
+      if (json && json.success) {
         setChats(json.data || []);
       } else {
-        setError(json.message || 'Failed to fetch chats');
+        setError(json?.message || 'Failed to fetch chats');
       }
     } catch (e: any) {
       setError(e.message || 'Error fetching chats');
@@ -41,16 +39,13 @@ export function useChatList() {
 
   const getOrCreateChat = async (participantId: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chats/with/${participantId}`, {
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (json.success) {
+      const json = await getJson(`/chats/with/${participantId}`);
+      if (json && json.success) {
         // Refresh chats list
         fetchChats();
         return json.data;
       } else {
-        setError(json.message || 'Failed to create chat');
+        setError(json?.message || 'Failed to create chat');
         return null;
       }
     } catch (e: any) {
@@ -61,15 +56,11 @@ export function useChatList() {
 
   const deleteChat = async (chatId: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chats/${chatId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      const json = await res.json();
-      if (json.success) {
+      const json = await deleteJson(`/chats/${chatId}`);
+      if (json && json.success) {
         setChats((prev) => prev.filter((c) => c._id !== chatId));
       } else {
-        setError(json.message || 'Failed to delete chat');
+        setError(json?.message || 'Failed to delete chat');
       }
     } catch (e: any) {
       setError(e.message || 'Error deleting chat');

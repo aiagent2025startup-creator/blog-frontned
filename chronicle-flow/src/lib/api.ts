@@ -12,6 +12,19 @@ function normalizeBaseUrl(base?: string) {
 }
 export const API_BASE_URL = `${normalizeBaseUrl(VITE_API_URL)}/api`;
 
+// Manage auth token (if your backend uses JWTs in Authorization headers)
+export function setAuthToken(token?: string | null) {
+  if (token) {
+    try { localStorage.setItem('authToken', token); } catch (e) { /* ignore */ }
+  } else {
+    try { localStorage.removeItem('authToken'); } catch (e) { /* ignore */ }
+  }
+}
+
+export function getAuthToken(): string | null {
+  try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+}
+
 export interface FetchOptions extends RequestInit {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 }
@@ -22,10 +35,13 @@ export interface FetchOptions extends RequestInit {
 export async function apiCall(endpoint: string, options: FetchOptions = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const token = getAuthToken();
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token && !(options.headers && (options.headers as any)['Authorization']) ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
     credentials: 'include', // Always include credentials for cookie-based auth

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Blog } from "@/types/blog";
 import { useUser } from "@/context/UserContext";
+import { getJson } from '@/lib/api';
 import { useNavigate } from "react-router-dom";
 
 interface UserProfile {
@@ -58,11 +59,8 @@ export default function Profile() {
         const targetUserId = userId === "current" || !userId ? currentUser?.id : userId;
         
         // Fetch user profile
-        const profileResponse = await fetch(`http://localhost:5000/api/profiles/${targetUserId}`, {
-          credentials: 'include',
-        });
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
+        const profileData = await getJson(`/profiles/${targetUserId}`);
+        if (profileData && profileData.success) {
           const userData = {
             id: profileData.data.user._id,
             name: profileData.data.user.name,
@@ -86,11 +84,8 @@ export default function Profile() {
         }
 
         // Fetch all blogs and filter by user
-        const blogsResponse = await fetch('http://localhost:5000/api/blogs/all', {
-          credentials: 'include',
-        });
-        if (blogsResponse.ok) {
-          const blogsData = await blogsResponse.json();
+        const blogsData = await getJson('/blogs/all');
+        if (blogsData && blogsData.success) {
           const allBlogs = blogsData.data || [];
           const targetUserId2 = userId === "current" || !userId ? currentUser?.id : userId;
           const targetBlogsForUser = allBlogs.filter((blog: Blog) => blog.authorId === targetUserId2);

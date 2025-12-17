@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { realtimeService } from '@/services/realtimeService';
+import { getJson, postJson, putJson } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 export interface ChatMessage {
@@ -46,14 +47,11 @@ export function useChat(chatId: string | null) {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`http://localhost:5000/api/chats/${chatId}`, {
-          credentials: 'include',
-        });
-        const json = await res.json();
-        if (json.success) {
+        const json = await getJson(`/chats/${chatId}`);
+        if (json && json.success) {
           setChat(json.data);
         } else {
-          setError(json.message || 'Failed to fetch chat');
+          setError(json?.message || 'Failed to fetch chat');
         }
       } catch (e: any) {
         setError(e.message || 'Error fetching chat');
@@ -125,19 +123,11 @@ export function useChat(chatId: string | null) {
     if (!chatId || !content.trim()) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/chats/${chatId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ content }),
-      });
-
-      const json = await res.json();
-      if (json.success) {
-        // Optimistically update UI (message already in DB)
+      const json = await postJson(`/chats/${chatId}/messages`, { content });
+      if (json && json.success) {
         return json.data;
       } else {
-        setError(json.message || 'Failed to send message');
+        setError(json?.message || 'Failed to send message');
         return null;
       }
     } catch (e: any) {
@@ -150,10 +140,7 @@ export function useChat(chatId: string | null) {
     if (!chatId) return;
 
     try {
-      await fetch(`http://localhost:5000/api/chats/${chatId}/messages/${messageId}/read`, {
-        method: 'PUT',
-        credentials: 'include',
-      });
+      await putJson(`/chats/${chatId}/messages/${messageId}/read`);
     } catch (e) {
       console.error('Error marking message as read:', e);
     }

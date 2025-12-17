@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
 import { AdvancedSearchBar } from "@/components/AdvancedSearchBar";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
+import { getJson } from '@/lib/api';
 import { realtimeConfig } from "@/config/realtimeConfig";
 
 interface SearchFilters {
@@ -38,16 +39,13 @@ export default function Home() {
     try {
       setLoading(true);
       console.log('📥 Fetching blogs from API...');
-      const response = await fetch('http://localhost:5000/api/blogs/all', {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const data = await getJson('/blogs/all');
+      if (data && data.success) {
         console.log(`✅ Fetched ${data.data?.length || 0} blogs`);
         setBlogs(data.data || []);
         applyFilters(data.data || [], filters);
       } else {
-        console.error('❌ Failed to fetch blogs - Status:', response.status);
+        console.error('❌ Failed to fetch blogs - invalid response');
       }
     } catch (error) {
       console.error('❌ Error fetching blogs:', error);

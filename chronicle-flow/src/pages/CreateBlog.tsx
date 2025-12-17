@@ -24,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import { getJson } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/api';
 import { ToastAction } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/context/UserContext";
@@ -152,8 +154,8 @@ export default function CreateBlog() {
 
       // If editing, send PUT to update endpoint, otherwise POST to create
       const url = editingId
-        ? `http://localhost:5000/api/blogs/update/${editingId}`
-        : 'http://localhost:5000/api/blogs/create';
+        ? `${API_BASE_URL}/blogs/update/${editingId}`
+        : `${API_BASE_URL}/blogs/create`;
       const method = editingId ? 'PUT' : 'POST';
 
       console.log(`📦 Sending ${method} request to ${url}...`);
@@ -253,9 +255,8 @@ export default function CreateBlog() {
     let mounted = true;
     const fetchBlog = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/blogs/${editId}`);
-        const json = await res.json();
-        if (res.ok && json.success) {
+        const json = await getJson(`/blogs/${editId}`);
+        if (json && json.success) {
           const b = json.data;
           if (!mounted) return;
           setEditingId(editId);
