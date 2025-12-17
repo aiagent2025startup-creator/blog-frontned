@@ -5,11 +5,13 @@ services:
     name: blog-frontned-frontend
     env: static
     branch: main
-    # Build from the `chronicle-flow` subfolder so Render finds package.json there
-    buildCommand: "npm --prefix chronicle-flow ci && npm --prefix chronicle-flow run build"
+    # Run install & build within the `chronicle-flow` folder so Render uses the correct working directory
+    installCommand: "npm ci"
+    buildCommand: "npm run build"
     # Where Vite writes the production files
     publishPath: "chronicle-flow/dist"
-    root: /
+    # Set service root to the chronicle-flow subfolder (relative to repo root)
+    root: chronicle-flow
     autoDeploy: true
     plan: starter
     envVars:
