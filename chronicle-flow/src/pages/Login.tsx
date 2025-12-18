@@ -81,7 +81,8 @@ export default function Login() {
     try {
       const data = await postJson('/users/login', { email: email.toLowerCase(), password });
 
-      if (!response.ok || !data.success) {
+      // `postJson` returns parsed JSON. Check the success flag instead of `response.ok`.
+      if (!data || data.success === false) {
         toast({
           title: "❌ Login Failed",
           description: data.message || "Email or password is incorrect. Please check your credentials and try again.",
@@ -125,7 +126,9 @@ export default function Login() {
         description: `You've successfully logged in as ${userFromResponse.name || userFromResponse.email}.`,
       });
 
-      if (data?.token) setAuthToken(data.token);
+      // Token may be present at either `data.token` (older shape) or at `data.data.token` (current shape)
+      const returnedToken = data?.token || data?.data?.token;
+      if (returnedToken) setAuthToken(returnedToken);
       setIsLoading(false);
       navigate("/");
     } catch (error) {
