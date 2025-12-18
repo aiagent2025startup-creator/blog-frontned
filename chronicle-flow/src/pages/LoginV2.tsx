@@ -59,10 +59,11 @@ export default function LoginV2() {
     try {
       const data = await postJson('/users/login', { email, password });
 
-      if (!res.ok) {
+      // postJson returns parsed JSON; check `success` flag rather than an undefined `res`.
+      if (!data || data.success === false) {
         toast({
           title: "Login Failed",
-          description: data.message || "Invalid credentials",
+          description: data?.message || "Invalid credentials",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -101,7 +102,8 @@ export default function LoginV2() {
       });
 
       // If backend returns a token, store it for Authorization header usage
-      if (data?.token) setAuthToken(data.token);
+      const returnedToken = data?.token || data?.data?.token;
+      if (returnedToken) setAuthToken(returnedToken);
       setIsLoading(false);
       navigate("/");
     } catch (error) {
@@ -130,10 +132,10 @@ export default function LoginV2() {
     try {
       const data = await postJson('/users/auth/mobile/send-otp', { phone });
 
-      if (!res.ok) {
+      if (!data || data.success === false) {
         toast({
           title: "Failed to Send OTP",
-          description: data.message || "Invalid phone number",
+          description: data?.message || "Invalid phone number",
           variant: "destructive",
         });
         setMobileLoading(false);
@@ -172,10 +174,10 @@ export default function LoginV2() {
     try {
       const data = await postJson('/users/auth/mobile/verify-otp', { phone, otp });
 
-      if (!res.ok) {
+      if (!data || data.success === false) {
         toast({
           title: "Invalid OTP",
-          description: data.message || "OTP verification failed",
+          description: data?.message || "OTP verification failed",
           variant: "destructive",
         });
         setMobileLoading(false);
