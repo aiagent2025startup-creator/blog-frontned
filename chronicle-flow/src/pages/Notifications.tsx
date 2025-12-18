@@ -1,174 +1,170 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Heart,
-  MessageCircle,
-  UserPlus,
-  Share2,
-  Trash2,
-  CheckCheck,
-  Bell,
-} from "lucide-react";
-import { MainLayout } from "@/components/layout/MainLayout";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useNotifications } from "@/context/NotificationProvider";
-import { formatDistanceToNow } from "date-fns";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { realtimeService } from '../services/realtimeService';
+import { useToast } from '../hooks/use-toast';
+import { API_BASE_URL, getAuthToken } from '@/lib/api';
+import { useUser } from './UserContext';
 
-export default function Notifications() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAll } = useNotifications();
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+export interface Notification {
+  id: string;
+  type: 'like' | 'comment' | 'follow' | 'share';
+  message: string;
+  actor: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  targetBlog?: {
+    id: string;
+    title: string;
+  };
+  timestamp: Date;
+  read: boolean;
+}
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "like":
-        return <Heart className="h-5 w-5 text-red-500" />;
-      case "comment":
-        return <MessageCircle className="h-5 w-5 text-blue-500" />;
-      case "follow":
-        return <UserPlus className="h-5 w-5 text-green-500" />;
-      case "share":
-        return <Share2 className="h-5 w-5 text-purple-500" />;
-      default:
-        return null;
+interface NotificationContextType {
+  notifications: Notification[];
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
+  clearAll: () => void;
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { toast } = useToast();
+  const { user: currentUser } = useUser();
+
+  useEffect(() => {
+    // Connect to real-time service if not already connected
+    if (!realtimeService.isConnected()) {
+      realtimeService.connect();
     }
+
+    // Load historical notifications for signed-in user
+    (async () => {
+      try {
+        if (currentUser && currentUser.id) {
+          // Use full backend URL and include credentials + Authorization fallback
+          const headers: any = { 'Content-Type': 'application/json' };
+          const token = getAuthToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+          const res = await fetch(`${API_BASE_URL}/notifications`, { credentials: 'include', headers });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && Array.isArray(json.data)) {
+              const mapped = json.data.map((n: any) => ({
+                id: n._id,
+                type: n.type,
+                message: n.message,
+                actor: n.actor || { id: n.actor?.id, name: n.actor?.name, avatar: n.actor?.avatar },
+                targetBlog: n.targetBlog,
+                timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
+                read: !!n.read,
+              }));
+              setNotifications(mapped);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load notifications:', e);
+      }
+    })();
+
+    // Subscribe to notification events using the service's `on` API
+    const unsubscribe = realtimeService.on('notification:new', (data: any) => {
+      // If the notification is targeted to a recipient, only show it to that user
+      if (data.recipientId && currentUser && data.recipientId !== currentUser.id) {
+        return;
+      }
+      const notification: Notification = {
+        id: `notif-${Date.now()}-${Math.random()}`,
+        type: data.type || 'like',
+        message: data.message,
+        actor: data.actor,
+        targetBlog: data.targetBlog,
+        timestamp: new Date(data.timestamp),
+        read: false,
+      };
+
+      setNotifications((prev) => [notification, ...prev]);
+
+      // Show toast for new notification
+      toast({
+        title: `New ${data.type}!`,
+        description: data.message,
+        duration: 5000,
+      });
+    });
+
+    return () => {
+      // Cleanup subscription
+      unsubscribe();
+    };
+  }, [toast]);
+
+  const markAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((notif) =>
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+
+    // Update backend
+    (async () => {
+      try {
+        await fetch(`/api/notifications/${id}/read`, { method: 'PUT', credentials: 'include' });
+      } catch (e) {
+        console.error('Failed to mark notification read on server:', e);
+      }
+    })();
   };
 
-  const filteredNotifications =
-    filter === "unread"
-      ? notifications.filter(n => !n.read)
-      : notifications;
+  const markAllAsRead = () => {
+    setNotifications((prev) =>
+      prev.map((notif) => ({ ...notif, read: true }))
+    );
+  };
+
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
+    (async () => {
+      try {
+        await fetch(`/api/notifications/${id}`, { method: 'DELETE', credentials: 'include' });
+      } catch (e) {
+        console.error('Failed to delete notification on server:', e);
+      }
+    })();
+  };
+
+  const clearAll = () => {
+    setNotifications([]);
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <MainLayout>
-      <div className="max-w-3xl mx-auto py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-display text-2xl font-bold">Notifications</h1>
-            {unreadCount > 0 && (
-              <p className="text-sm text-muted-foreground">{unreadCount} unread</p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={markAllAsRead}>
-                <CheckCheck className="h-4 w-4 mr-2" />
-                Mark all as read
-              </Button>
-            )}
-            {notifications.length > 0 && (
-              <Button variant="destructive" size="sm" onClick={clearAll}>
-                Clear all
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant={filter === "all" ? "default" : "outline"}
-            onClick={() => setFilter("all")}
-          >
-            All ({notifications.length})
-          </Button>
-          <Button
-            variant={filter === "unread" ? "default" : "outline"}
-            onClick={() => setFilter("unread")}
-          >
-            Unread ({unreadCount})
-          </Button>
-        </div>
-
-        {/* Notifications List */}
-        {filteredNotifications.length > 0 ? (
-          <div className="space-y-3">
-            {filteredNotifications.map(notification => (
-              <div
-                key={notification.id}
-                onClick={() => markAsRead(notification.id)}
-                className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
-                  notification.read
-                    ? "bg-card border-border hover:bg-secondary/30"
-                    : "bg-primary/5 border-primary/30 hover:bg-primary/10"
-                }`}
-              >
-                {/* Icon */}
-                <div className="mt-1 flex-shrink-0">
-                  {getIcon(notification.type)}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link
-                      to={`/profile/${notification.actor.id}`}
-                      className="hover:text-primary transition-colors"
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={notification.actor.avatar} alt={notification.actor.name} />
-                        <AvatarFallback>{notification.actor.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                    </Link>
-                    <div>
-                      <Link
-                        to={`/profile/${notification.actor.id}`}
-                        className="font-medium hover:text-primary transition-colors"
-                      >
-                        {notification.actor.name}
-                      </Link>
-                      <span className="text-muted-foreground ml-1">{notification.message}</span>
-                    </div>
-                  </div>
-
-                  {notification.targetBlog && notification.targetBlog.title && (
-                    <Link
-                      to={`/blog/${notification.targetBlog.id}`}
-                      className="text-sm text-primary hover:underline block truncate"
-                    >
-                      "{notification.targetBlog.title}"
-                    </Link>
-                  )}
-
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
-                  </p>
-                </div>
-
-                {/* Unread Badge & Delete */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {!notification.read && (
-                    <Badge variant="default" className="h-2 w-2 rounded-full p-0" />
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteNotification(notification.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-card rounded-2xl border border-border">
-            <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No notifications</p>
-            <p className="text-muted-foreground">
-              {filter === "unread"
-                ? "You're all caught up!"
-                : "You don't have any notifications yet."}
-            </p>
-          </div>
-        )}
-      </div>
-    </MainLayout>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
+        deleteNotification,
+        clearAll,
+      }}
+    >
+      {children}
+    </NotificationContext.Provider>
   );
-}
+};
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within NotificationProvider');
+  }
+  return context;
+};
