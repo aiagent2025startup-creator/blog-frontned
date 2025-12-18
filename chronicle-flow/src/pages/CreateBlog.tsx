@@ -1,539 +1,333 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  Image, 
-  X, 
-  Sparkles, 
-  Upload,
-  Tag,
-  Send,
-  Save,
-  ArrowLeft
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
-import { getJson } from '@/lib/api';
-import { API_BASE_URL } from '@/lib/api';
-import { ToastAction } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import { getJson, deleteJson, postJson } from '@/lib/api';
 import { useUser } from "@/context/UserContext";
+import { ShareButton } from "@/components/ShareButton";
+import { Trash2, MessageCircle } from "lucide-react";
 
-const EMOJIS = ["📝", "💡", "🚀", "⚛️", "🤖", "🎨", "💻", "📱", "🌐", "🔥", "✨", "🎯"];
+interface Comment {
+  _id?: string;
+  id?: string;
+  text: string;
+  author: Author;
+  createdAt?: string;
+}
 
-const TONES = [
-  { value: "professional", label: "Professional" },
-  { value: "casual", label: "Casual" },
-  { value: "formal", label: "Formal" },
-  { value: "humorous", label: "Humorous" },
-  { value: "creative", label: "Creative" },
-];
+interface Author {
+  _id?: string;
+  id?: string;
+  name?: string;
+  avatar?: string;
+}
 
-const LENGTHS = [
-  { value: "short", label: "Short (~200 words)" },
-  { value: "medium", label: "Medium (~500 words)" },
-  { value: "long", label: "Long (~1000 words)" },
-];
+interface BlogDetailData {
+  id?: string;
+  title?: string;
+  content?: string;
+  emoji?: string;
+  image?: string;
+  coverImage?: string;
+  tags?: string[];
+  author?: Author;
+  authorId?: string;
+  likes?: any;
+  comments?: Comment[];
+  shares?: any;
+  createdAt?: string;
+}
 
-export default function CreateBlog() {
+export default function BlogDetail() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useUser();
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [emoji, setEmoji] = useState("📝");
-  const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const [aiPrompt, setAIPrompt] = useState("");
-  const [aiTone, setAITone] = useState("professional");
-  const [aiLength, setAILength] = useState("medium");
+  const { user: currentUser } = useUser();
+  const [blog, setBlog] = useState<BlogDetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault();
-      const newTag = tagInput.trim().replace(/,/g, "");
-      if (newTag && !tags.includes(newTag) && tags.length < 5) {
-        setTags([...tags, newTag]);
-        setTagInput("");
-      }
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
-  const handleGenerateContent = async () => {
-    if (!aiPrompt.trim()) {
-      toast({
-        title: "Prompt required",
-        description: "Please enter a prompt for AI content generation.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-
-    // Simulate AI generation
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const generatedContent = `Here's a ${aiLength} ${aiTone} blog post about "${aiPrompt}":\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.`;
-
-    setContent(generatedContent);
-    setIsGenerating(false);
-    setShowAIPanel(false);
-
-    toast({
-      title: "Content generated!",
-      description: "AI has generated content based on your prompt.",
-    });
-  };
-
-  const handlePublish = async () => {
-    if (!title.trim() || !content.trim()) {
-      console.warn('❌ Missing fields: title or content is empty');
-      toast({
-        title: "Missing fields",
-        description: "Please fill in the title and content.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsPublishing(true);
-    console.log('🚀 Starting blog creation...');
-    console.log('📝 Blog Details:', {
-      title,
-      content,
-      emoji,
-      tags,
-      hasImage: !!coverImage,
-    });
-
-    try {
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('content', content.trim());
-      formData.append('emoji', emoji);
-      formData.append('tags', JSON.stringify(tags)); // Send as JSON string for FormData
-      // Add image file if present (data URL -> Blob)
-      if (coverImage && coverImage.startsWith('data:')) {
-        const response = await fetch(coverImage);
-        const blob = await response.blob();
-        formData.append('image', blob, 'cover-image.png');
-        console.log('📸 Image file added to FormData');
-      }
-
-      // If editing, send PUT to update endpoint, otherwise POST to create
-      const url = editingId
-        ? `${API_BASE_URL}/blogs/update/${editingId}`
-        : `${API_BASE_URL}/blogs/create`;
-      const method = editingId ? 'PUT' : 'POST';
-
-      console.log(`📦 Sending ${method} request to ${url}...`);
-
-      const fetchResponse = await fetch(url, {
-        method,
-        body: formData,
-        credentials: 'include',
-      });
-
-      console.log('📬 Response Status:', fetchResponse.status);
-
-      // Parse JSON safely — backend may sometimes return HTML on errors
-      let data: any = null;
-      try {
-        const text = await fetchResponse.text();
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          // Not JSON
-          console.error('CreateBlog: response is not JSON, raw text:', text.slice(0, 100));
-          data = { success: false, message: 'Server returned non-JSON response', raw: text };
-        }
-      } catch (err) {
-        console.error('Error reading response body:', err);
-        data = { success: false, message: 'Failed to read server response' };
-      }
-
-      console.log('📊 Response Data:', data);
-
-      if (fetchResponse.ok && data.success) {
-        console.log('✅ Blog created successfully!');
-        const newId = data.data._id || data.data.id;
-        console.log('🎉 New Blog ID:', newId);
-        if (data.data.image) {
-          console.log('🖼️  Image uploaded:', data.data.image);
-        }
-
-        // Show toast with action to view the created post
-        toast({
-          title: "Blog published! 🎉",
-          description: "Your blog has been published successfully.",
-          action: (
-            <ToastAction asChild altText="View the published blog post">
-              <a href={`/blog/${newId}`}>View post</a>
-            </ToastAction>
-          ),
-        });
-
-        // Clear form
-        setTitle('');
-        setContent('');
-        setEmoji('📝');
-        setTags([]);
-        setCoverImage(null);
-        setEditingId(null);
-
-        // Redirect to either the blog detail (edit) or home (new)
-        setTimeout(() => {
-          if (editingId) {
-            console.log('🔄 Redirecting to updated blog...');
-            navigate(`/blog/${newId}`, { replace: true });
-          } else {
-            console.log('🔄 Redirecting to home...');
-            navigate('/', { replace: true });
-          }
-        }, 900);
-      } else {
-        console.error('❌ Blog creation failed!');
-        console.error('Error message:', data.message);
-        console.error('Full error:', data);
-        toast({
-          title: "Error",
-          description: data.message || "Failed to create blog",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('❌ Exception during blog creation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create blog. Check console for details.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  // Support edit mode: read ?edit=<id> and prefill
-  const location = useLocation();
   useEffect(() => {
-    const sp = new URLSearchParams(location.search);
-    const editId = sp.get('edit');
-    if (!editId) return;
-
-    let mounted = true;
+    if (!id) return;
     const fetchBlog = async () => {
+      setLoading(true);
       try {
-        const json = await getJson(`/blogs/${editId}`);
-        if (json && json.success) {
-          const b = json.data;
-          if (!mounted) return;
-          setEditingId(editId);
-          setTitle(b.title || '');
-          setContent(b.content || '');
-          setEmoji(b.emoji || '📝');
-          setTags(Array.isArray(b.tags) ? b.tags : []);
-          // If there is an existing image url, set it so user sees current cover
-          if (b.image) setCoverImage(b.image);
+        const data = await getJson(`/blogs/${id}`);
+        if (data && data.success) {
+          // Normalize shape if needed
+          const b = data.data;
+          const transformed = {
+            id: b._id || b.id,
+            title: b.title,
+            content: b.content,
+            emoji: b.emoji,
+            image: b.image || b.coverImage,
+            tags: b.tags || [],
+            author: b.author || (b.authorId ? { id: b.authorId } : undefined),
+            likes: Array.isArray(b.likes) ? b.likes.length : b.likes || 0,
+            comments: Array.isArray(b.comments) ? b.comments : [],
+            shares: Array.isArray(b.shares) ? b.shares.length : b.shares || 0,
+            createdAt: b.createdAt,
+          } as BlogDetailData;
+          setBlog(transformed);
         } else {
-          toast({ title: 'Error', description: json.message || 'Failed to load blog for edit', variant: 'destructive' });
+          toast({ title: 'Error', description: data.message || 'Failed to load blog', variant: 'destructive' });
         }
       } catch (err: any) {
-        toast({ title: 'Error', description: err.message || 'Failed to load blog for edit', variant: 'destructive' });
+        toast({ title: 'Error', description: err.message || 'Failed to load blog', variant: 'destructive' });
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchBlog();
+  }, [id]);
 
-    return () => { mounted = false; };
-  }, [location.search, navigate]);
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="max-w-3xl mx-auto py-20 text-center">Loading blog...</div>
+      </MainLayout>
+    );
+  }
 
-  const handleSaveDraft = () => {
-    console.log('💾 Saving draft...');
-    toast({
-      title: "Draft saved",
-      description: "Your blog has been saved as a draft.",
-    });
-  };
+  if (!blog) {
+    return (
+      <MainLayout>
+        <div className="max-w-3xl mx-auto py-20 text-center">Blog not found.</div>
+      </MainLayout>
+    );
+  }
+
+  const isOwner = (blog.author && currentUser && (blog.author._id === currentUser.id || blog.author.id === currentUser.id));
 
   return (
     <MainLayout>
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+      <div className="max-w-3xl mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handleSaveDraft}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button 
-              variant="gradient" 
-              onClick={handlePublish}
-              disabled={isPublishing}
-            >
-              {isPublishing ? (
-                <>
-                  <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                  Publishing...
-                </>
+          <div className="flex items-center gap-4">
+            <Avatar>
+              {blog.author?.avatar ? (
+                <AvatarImage src={blog.author.avatar} alt={blog.author?.name} />
               ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Publish
-                </>
+                <AvatarFallback>{(blog.author?.name || 'U').charAt(0)}</AvatarFallback>
               )}
-            </Button>
+            </Avatar>
+            <div>
+              <div className="font-medium">{blog.author?.name || 'Unknown'}</div>
+              <div className="text-xs text-muted-foreground">{blog.createdAt ? formatDistanceToNow(new Date(blog.createdAt), { addSuffix: true }) : ''}</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <>
+                <Button variant="outline" onClick={() => navigate(`/create?edit=${blog.id}`)}>Edit</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    const ok = window.confirm('Are you sure you want to delete this blog? This action cannot be undone.');
+                    if (!ok) return;
+                    try {
+                      const json = await deleteJson(`/blogs/delete/${blog.id}`);
+                        if (json && json.success) {
+                        toast({ title: 'Deleted', description: 'Blog deleted successfully.' });
+                        navigate('/');
+                      } else {
+                        toast({ title: 'Error', description: json.message || 'Failed to delete blog', variant: 'destructive' });
+                      }
+                    } catch (err: any) {
+                      toast({ title: 'Error', description: err.message || 'Failed to delete blog', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+            <ShareButton blogId={blog.id || ''} title={blog.title || ''} />
+            {!isOwner && (
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/messages?user=${blog.author?.id || blog.authorId}`)}
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Message Author
+              </Button>
+            )}
+            <Button onClick={() => window.scrollTo({ top: 9999, behavior: 'smooth' })}>Comments</Button>
           </div>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border p-6 shadow-md animate-fade-in">
-          <h1 className="font-display font-bold text-2xl mb-6">Create New Blog</h1>
+        <h1 className="font-display text-3xl font-bold mb-4">{blog.emoji} {blog.title}</h1>
 
-          <div className="space-y-6">
-            {/* Emoji Picker */}
-            <div className="space-y-2">
-              <Label>Blog Emoji</Label>
-              <div className="flex flex-wrap gap-2">
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    type="button"
-                    onClick={() => setEmoji(e)}
-                    className={cn(
-                      "w-10 h-10 rounded-lg text-xl flex items-center justify-center transition-all",
-                      emoji === e
-                        ? "bg-primary/10 ring-2 ring-primary"
-                        : "bg-secondary hover:bg-secondary/80"
-                    )}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="mb-6">
+          <img src={blog.image || 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop'} alt={blog.title} className="w-full h-[420px] object-cover rounded-xl" />
+        </div>
 
-            {/* Title */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Blog Title</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{emoji}</span>
-                <Input
-                  id="title"
-                  placeholder="Enter an engaging title..."
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="text-lg font-medium"
-                />
-              </div>
-            </div>
+        <div className="prose max-w-none mb-6">
+          <p>{blog.content}</p>
+        </div>
 
-            {/* Cover Image */}
-            <div className="space-y-2">
-              <Label>Cover Image</Label>
-              {coverImage ? (
-                <div className="relative aspect-video rounded-xl overflow-hidden">
-                  <img
-                    src={coverImage}
-                    alt="Cover"
-                    className="w-full h-full object-cover"
-                  />
-                  <button
-                    onClick={() => setCoverImage(null)}
-                    className="absolute top-2 right-2 w-8 h-8 bg-foreground/80 rounded-full flex items-center justify-center text-background hover:bg-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors bg-secondary/30">
-                  <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">
-                    Click or drag to upload cover image
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
+        <div className="flex items-center gap-2 mb-6">
+          {blog.tags?.map((t) => (
+            <Badge key={t} variant="secondary">#{t}</Badge>
+          ))}
+        </div>
 
-            {/* Content */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="content">Content</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAIPanel(!showAIPanel)}
-                  className="flex items-center gap-2"
-                >
-                  <Sparkles className="h-4 w-4 text-accent" />
-                  AI Generate
-                </Button>
-              </div>
+        <div className="flex items-center gap-6 text-sm text-muted-foreground mb-12">
+          <div>{typeof blog.likes === 'number' ? blog.likes : 0} likes</div>
+          <div>{Array.isArray(blog.comments) ? blog.comments.length : 0} comments</div>
+          <div>{typeof blog.shares === 'number' ? blog.shares : 0} shares</div>
+        </div>
 
-              {/* AI Generation Panel */}
-              {showAIPanel && (
-                <div className="p-4 bg-accent/5 border border-accent/20 rounded-xl space-y-4 animate-slide-down">
-                  <div className="flex items-center gap-2 text-accent">
-                    <Sparkles className="h-5 w-5" />
-                    <span className="font-medium">AI Content Generator</span>
-                  </div>
+        <div id="comments" className="space-y-4">
+          <h3 className="font-semibold">Comments</h3>
 
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="aiPrompt">What would you like to write about?</Label>
-                      <Textarea
-                        id="aiPrompt"
-                        placeholder="E.g., The benefits of remote work for developers..."
-                        value={aiPrompt}
-                        onChange={(e) => setAIPrompt(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Tone</Label>
-                        <Select value={aiTone} onValueChange={setAITone}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {TONES.map((tone) => (
-                              <SelectItem key={tone.value} value={tone.value}>
-                                {tone.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Length</Label>
-                        <Select value={aiLength} onValueChange={setAILength}>
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {LENGTHS.map((length) => (
-                              <SelectItem key={length.value} value={length.value}>
-                                {length.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
+          {currentUser ? (
+            <div className="bg-secondary/50 p-4 rounded-lg mb-6">
+              <div className="flex items-start gap-3">
+                <Avatar>
+                  <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
+                  <AvatarFallback>{currentUser.name?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="font-medium text-sm mb-2">{currentUser.name}</div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Write a comment..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                      className="text-sm"
+                    />
                     <Button
-                      onClick={handleGenerateContent}
-                      disabled={isGenerating}
-                      className="w-full"
+                      onClick={handleAddComment}
+                      disabled={!commentText.trim() || submittingComment}
+                      size="sm"
                     >
-                      {isGenerating ? (
-                        <span className="flex items-center gap-2">
-                          <span className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                          Generating...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4" />
-                          Generate Content
-                        </span>
-                      )}
+                      {submittingComment ? 'Posting...' : 'Post'}
                     </Button>
                   </div>
                 </div>
-              )}
-
-              <Textarea
-                id="content"
-                placeholder="Write your blog content here..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[300px] resize-y"
-              />
-            </div>
-
-            {/* Tags */}
-            <div className="space-y-2">
-              <Label htmlFor="tags">Tags (max 5)</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="flex items-center gap-1 px-3 py-1"
-                  >
-                    #{tag}
-                    <button
-                      onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-              <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="tags"
-                  placeholder="Add tags (press Enter)"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleAddTag}
-                  className="pl-10"
-                  disabled={tags.length >= 5}
-                />
               </div>
             </div>
+          ) : (
+            <div className="bg-secondary/50 p-4 rounded-lg mb-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">Sign in to post comments</p>
+              <Button onClick={() => navigate('/login')} size="sm">
+                Sign In
+              </Button>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {Array.isArray(blog.comments) && blog.comments.length > 0 ? (
+              blog.comments.map((comment) => (
+                <div key={comment._id || comment.id} className="bg-secondary/30 p-4 rounded-lg">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.author?.avatar} alt={comment.author?.name} />
+                        <AvatarFallback>{comment.author?.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{comment.author?.name || 'Unknown'}</div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : 'just now'}
+                        </div>
+                        <p className="text-sm">{comment.text}</p>
+                      </div>
+                    </div>
+                    {(currentUser && comment.author && (comment.author._id === currentUser.id || comment.author.id === currentUser.id)) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteComment(comment._id || comment.id || '')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground text-center py-4">
+                No comments yet. Be the first to comment!
+              </div>
+            )}
           </div>
         </div>
       </div>
     </MainLayout>
   );
+
+  async function handleAddComment() {
+    if (!commentText.trim() || !blog?.id) return;
+
+    setSubmittingComment(true);
+    try {
+          const data = await postJson(`/blogs/${blog.id}/comment`, { text: commentText });
+        if (data && data.success) {
+        // Update comments in local state
+        setBlog((prev) => {
+          if (!prev) return prev;
+          const newComment = {
+            _id: new Date().getTime().toString(),
+            text: commentText,
+            author: currentUser || { name: 'You', id: '', avatar: '' },
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...prev,
+            comments: [...(Array.isArray(prev.comments) ? prev.comments : []), newComment],
+          };
+        });
+        setCommentText('');
+        toast({ title: 'Success', description: 'Comment added!' });
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to add comment', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to add comment', variant: 'destructive' });
+    } finally {
+      setSubmittingComment(false);
+    }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!blog?.id) return;
+
+    try {
+      const data = await deleteJson(`/blogs/${blog.id}/comment`, { commentId });
+      if (data && data.success) {
+        // Remove comment from local state
+        setBlog((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            comments: Array.isArray(prev.comments)
+              ? prev.comments.filter((c) => (c._id || c.id) !== commentId)
+              : [],
+          };
+        });
+        toast({ title: 'Success', description: 'Comment deleted!' });
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to delete comment', variant: 'destructive' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to delete comment', variant: 'destructive' });
+    }
+  }
 }
