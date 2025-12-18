@@ -53,9 +53,11 @@ export default function Settings() {
         const fd = new FormData();
         // Backend expects field name 'profilePicture' per upload middleware
         fd.append('profilePicture', avatarFile);
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
         const up = await fetch(`${API_BASE_URL}/profiles/${user.id}/picture`, {
           method: 'POST',
           credentials: 'include',
+          headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : undefined,
           body: fd,
         });
         let upJson: any = null;
