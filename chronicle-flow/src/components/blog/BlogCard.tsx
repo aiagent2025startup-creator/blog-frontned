@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  Bookmark, 
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
   MoreHorizontal,
   Edit,
   Trash2
@@ -135,28 +135,28 @@ export function BlogCard({ blog, isOwner = false }: BlogCardProps) {
 
                     try {
                       const json = await deleteJson(`/blogs/delete/${blog.id}`);
-                      
+
                       if (json && json.success) {
-                        toast({ 
-                          title: '✅ Blog Deleted', 
-                          description: 'Your blog has been deleted successfully.' 
+                        toast({
+                          title: '✅ Blog Deleted',
+                          description: 'Your blog has been deleted successfully.'
                         });
-                        
+
                         // Reload the page to fetch updated blog list
                         window.location.reload();
                       } else {
-                        toast({ 
-                          title: '❌ Error', 
-                          description: json.message || 'Failed to delete blog', 
-                          variant: 'destructive' 
+                        toast({
+                          title: '❌ Error',
+                          description: json.message || 'Failed to delete blog',
+                          variant: 'destructive'
                         });
                       }
                     } catch (err: any) {
                       console.error('Delete error:', err);
-                      toast({ 
-                        title: '❌ Error', 
-                        description: err.message || 'Failed to delete blog', 
-                        variant: 'destructive' 
+                      toast({
+                        title: '❌ Error',
+                        description: err.message || 'Failed to delete blog',
+                        variant: 'destructive'
                       });
                     }
                   }}
@@ -187,14 +187,24 @@ export function BlogCard({ blog, isOwner = false }: BlogCardProps) {
         </Link>
       </div>
 
-      {/* Cover Image */}
+      {/* Cover Image or Video */}
       <Link to={`/blog/${blog.id}`} className="block">
-        <div className="relative aspect-video overflow-hidden">
-          <img
-            src={blog.coverImage}
-            alt={blog.title}
-            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-          />
+        <div className="relative aspect-video overflow-hidden bg-black">
+          {blog.type === 'short' && blog.videoUrl ? (
+            <video
+              src={blog.videoUrl}
+              poster={blog.image || blog.coverImage}
+              controls
+              className="w-full h-full object-contain"
+              playsInline
+            />
+          ) : (
+            <img
+              src={blog.image || blog.coverImage}
+              alt={blog.title}
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+            />
+          )}
         </div>
       </Link>
 

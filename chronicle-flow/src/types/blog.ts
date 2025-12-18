@@ -30,6 +30,9 @@ export interface Blog {
   content: string;
   emoji: string;
   coverImage: string;
+  image?: string;
+  videoUrl?: string;
+  type?: 'blog' | 'short';
   tags: string[];
   authorId: string;
   author: Pick<User, 'id' | 'name' | 'avatar'>;

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { realtimeService } from '../services/realtimeService';
 import { useToast } from '../hooks/use-toast';
+import { API_BASE_URL, getAuthToken } from '@/lib/api';
 import { useUser } from './UserContext';
 
 export interface Notification {
@@ -46,7 +47,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     (async () => {
       try {
         if (currentUser && currentUser.id) {
-          const res = await fetch('/api/notifications', { credentials: 'include' });
+          // Use full backend URL and include credentials + Authorization fallback
+          const headers: any = { 'Content-Type': 'application/json' };
+          const token = getAuthToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+          const res = await fetch(`${API_BASE_URL}/notifications`, { credentials: 'include', headers });
           if (res.ok) {
             const json = await res.json();
             if (json.success && Array.isArray(json.data)) {

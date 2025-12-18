@@ -40,6 +40,8 @@ interface BlogDetailData {
   likes?: any;
   comments?: Comment[];
   shares?: any;
+  type?: 'blog' | 'short';
+  videoUrl?: string;
   createdAt?: string;
 }
 
@@ -72,6 +74,8 @@ export default function BlogDetail() {
             likes: Array.isArray(b.likes) ? b.likes.length : b.likes || 0,
             comments: Array.isArray(b.comments) ? b.comments : [],
             shares: Array.isArray(b.shares) ? b.shares.length : b.shares || 0,
+            type: b.type || 'blog',
+            videoUrl: b.videoUrl,
             createdAt: b.createdAt,
           } as BlogDetailData;
           setBlog(transformed);
@@ -135,7 +139,7 @@ export default function BlogDetail() {
                     if (!ok) return;
                     try {
                       const json = await deleteJson(`/blogs/delete/${blog.id}`);
-                        if (json && json.success) {
+                      if (json && json.success) {
                         toast({ title: 'Deleted', description: 'Blog deleted successfully.' });
                         navigate('/');
                       } else {
@@ -152,7 +156,7 @@ export default function BlogDetail() {
             )}
             <ShareButton blogId={blog.id || ''} title={blog.title || ''} />
             {!isOwner && (
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => navigate(`/messages?user=${blog.author?.id || blog.authorId}`)}
               >
@@ -167,7 +171,19 @@ export default function BlogDetail() {
         <h1 className="font-display text-3xl font-bold mb-4">{blog.emoji} {blog.title}</h1>
 
         <div className="mb-6">
-          <img src={blog.image || 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop'} alt={blog.title} className="w-full h-[420px] object-cover rounded-xl" />
+          {blog.type === 'short' && blog.videoUrl ? (
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
+              <video
+                src={blog.videoUrl}
+                poster={blog.image || blog.coverImage}
+                controls
+                className="w-full h-full object-contain"
+                playsInline
+              />
+            </div>
+          ) : (
+            <img src={blog.image || 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=400&fit=crop'} alt={blog.title} className="w-full h-[420px] object-cover rounded-xl" />
+          )}
         </div>
 
         <div className="prose max-w-none mb-6">
@@ -278,8 +294,8 @@ export default function BlogDetail() {
 
     setSubmittingComment(true);
     try {
-        const data = await postJson(`/blogs/${blog.id}/comment`, { text: commentText });
-      if (res.ok && data.success) {
+      const data = await postJson(`/blogs/${blog.id}/comment`, { text: commentText });
+      if (data && data.success) {
         // Update comments in local state
         setBlog((prev) => {
           if (!prev) return prev;

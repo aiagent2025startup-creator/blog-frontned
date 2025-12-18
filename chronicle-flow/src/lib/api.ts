@@ -7,7 +7,8 @@ const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 // Normalize base url to ensure there's no trailing slash before adding `/api`
 function normalizeBaseUrl(base?: string) {
-  if (!base) return 'https://blog-backend-fr96.onrender.com';
+  // Default to the known Render backend for this repository
+  if (!base) return 'https://blog-backend-e4j1.onrender.com';
   return base.replace(/\/$/, '');
 }
 export const API_BASE_URL = `${normalizeBaseUrl(VITE_API_URL)}/api`;

@@ -35,7 +35,10 @@ export default function Discover() {
     title: rawBlog.title || '',
     content: rawBlog.content || '',
     emoji: rawBlog.emoji || '📝',
-    coverImage: rawBlog.image || rawBlog.coverImage || '',
+    coverImage: rawBlog.coverImage || rawBlog.image || '',
+    image: rawBlog.image || rawBlog.coverImage || '',
+    videoUrl: rawBlog.videoUrl || '',
+    type: rawBlog.type || 'blog',
     tags: rawBlog.tags || [],
     authorId: rawBlog.authorId || rawBlog.author?._id || rawBlog.author?.id || '',
     author: rawBlog.author ? {
@@ -61,7 +64,7 @@ export default function Discover() {
           const rawBlogs = data.data || [];
           const normalizedBlogs = rawBlogs.map(normalizeBlog);
           setAllBlogs(normalizedBlogs);
-          
+
           if (selectedCategory) {
             const categoryTrending = getTrendingInCategory(normalizedBlogs, selectedCategory, 20);
             setTrendingBlogs(categoryTrending);
@@ -152,11 +155,10 @@ export default function Discover() {
                         selectedCategory === item.tag ? null : item.tag
                       )
                     }
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      selectedCategory === item.tag
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${selectedCategory === item.tag
                         ? 'bg-primary/10 border border-primary'
                         : 'hover:bg-secondary/50 border border-transparent'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">{item.icon}</span>

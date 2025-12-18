@@ -5,9 +5,12 @@ services:
     name: blog-frontned-frontend
     env: static
     branch: main
-    # Run install & build within the `chronicle-flow` folder so Render uses the correct working directory
-    installCommand: "npm ci --prefer-offline --no-audit --no-fund --silent"
-    buildCommand: "npm run build"
+    # Use pnpm for faster, deterministic installs on Render
+    # corepack enables the package manager shim available in Node
+    # Ensure commands run inside the `chronicle-flow` subdirectory when Render executes them.
+    installCommand: "cd chronicle-flow && corepack enable && pnpm install --frozen-lockfile --prefer-offline --silent"
+    # Debugging info (prints pnpm version and a small node_modules summary) before running the build
+    buildCommand: "cd chronicle-flow && pnpm -v && date && ls -la node_modules | head -n 50 && du -sh node_modules || true && echo '--- check specific modules ---' && ls -la node_modules/@radix-ui/react-focus-guards || true && ls -la node_modules/react-remove-scroll || true && ls -la node_modules/@floating-ui/react-dom || true && date && pnpm run build"
     # Where Vite writes the production files
     publishPath: "chronicle-flow/dist"
     # Set service root to the chronicle-flow subfolder (relative to repo root)
@@ -16,6 +19,6 @@ services:
     plan: starter
     envVars:
       - key: VITE_API_URL
-        value: "https://blog-backend-fr96.onrender.com"
+        value: "https://blog-backend-e4j1.onrender.com"
       - key: NODE_VERSION
         value: "18"

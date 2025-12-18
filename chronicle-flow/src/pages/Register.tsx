@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { postJson } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 export default function Register() {
@@ -34,12 +35,13 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!agreeTerms) {
       toast({
         title: "Agreement required",
         description: "Please agree to the terms and conditions.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
@@ -49,22 +51,47 @@ export default function Register() {
         title: "Passwords don't match",
         description: "Please make sure your passwords match.",
         variant: "destructive",
+        duration: 3000,
       });
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate registration
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await postJson('/users/register', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password
+      });
 
-    toast({
-      title: "Account created!",
-      description: "Please check your email to verify your account.",
-    });
-
-    setIsLoading(false);
-    navigate("/login");
+      if (response && response.success) {
+        toast({
+          title: "✅ Account created!",
+          description: "Your account has been created successfully. You can now log in.",
+          duration: 5000,
+        });
+        navigate("/login");
+      } else {
+        toast({
+          title: "❌ Registration failed",
+          description: response?.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "❌ Connection Error",
+        description: "Unable to connect to the server. Please check your connection.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -78,7 +105,7 @@ export default function Register() {
           <p className="text-lg opacity-90 mb-8">
             Create an account and join our community of passionate writers and readers.
           </p>
-          
+
           <div className="space-y-4">
             {[
               "Share your stories with millions of readers",
@@ -221,14 +248,12 @@ export default function Register() {
                 {passwordRequirements.map((req, index) => (
                   <div
                     key={index}
-                    className={`flex items-center gap-2 text-xs transition-colors ${
-                      req.met ? "text-success" : "text-muted-foreground"
-                    }`}
+                    className={`flex items-center gap-2 text-xs transition-colors ${req.met ? "text-success" : "text-muted-foreground"
+                      }`}
                   >
                     <div
-                      className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                        req.met ? "bg-success" : "bg-muted"
-                      }`}
+                      className={`w-4 h-4 rounded-full flex items-center justify-center ${req.met ? "bg-success" : "bg-muted"
+                        }`}
                     >
                       {req.met && <Check className="h-3 w-3 text-success-foreground" />}
                     </div>

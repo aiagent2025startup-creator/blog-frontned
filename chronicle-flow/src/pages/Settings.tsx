@@ -21,7 +21,17 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Prefill with user context data
+    // Prefill with user context data (guard against unauthenticated state)
+    if (!user) {
+      setName("");
+      setEmail("");
+      setBio("");
+      setAvatarPreview(null);
+      // Redirect to login after a short delay so user sees the settings screen briefly
+      const t = setTimeout(() => navigate('/login'), 600);
+      return () => clearTimeout(t);
+    }
+
     setName(user.name || "");
     setEmail(user.email || "");
     setBio(user.bio || "");
@@ -41,6 +51,9 @@ export default function Settings() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (!user || !user.id) {
+        throw new Error('Not authenticated. Please sign in and try again.');
+      }
       // Update profile data (simple PUT to profile update endpoint)
       // Put returns parsed JSON from our helper
       const resJson = await putJson(`/profiles/${user.id}`, { firstName: name, bio });

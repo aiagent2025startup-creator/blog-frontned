@@ -4,13 +4,21 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ],
   "env": {
-    "VITE_API_URL": "https://blog-backend-fr96.onrender.com"
+    "VITE_API_URL": "https://blog-backend-e4j1.onrender.com"
   }
 }
