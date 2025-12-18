@@ -42,24 +42,10 @@ export default function Settings() {
     setSaving(true);
     try {
       // Update profile data (simple PUT to profile update endpoint)
+      // Put returns parsed JSON from our helper
       const resJson = await putJson(`/profiles/${user.id}`, { firstName: name, bio });
-      // If backend returned error shape, throw
-      if (!resJson || !resJson.success) {
+      if (!resJson || resJson.success === false) {
         throw new Error(resJson?.message || 'Failed to update profile');
-      }
-      // Try to parse JSON; if response is HTML (doctype) or plain text, fallback to text
-      let json: any = null;
-      try {
-        json = await res.json();
-      } catch (err) {
-        const text = await res.text();
-        // If server returned HTML starting with '<!DOCTYPE' or '<html', use the text as message
-        if (!res.ok) throw new Error(text || 'Failed to update profile');
-      }
-
-      if (!res.ok) {
-        const message = (json && json.message) || 'Failed to update profile';
-        throw new Error(message);
       }
 
       // If avatar file chosen, upload via multipart endpoint
