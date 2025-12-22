@@ -53,6 +53,7 @@ export default function CreateBlog() {
   const { user } = useUser();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [emoji, setEmoji] = useState("📝");
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);

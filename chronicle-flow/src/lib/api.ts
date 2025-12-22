@@ -7,7 +7,11 @@ const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 // Normalize base url to ensure there's no trailing slash before adding `/api`
 function normalizeBaseUrl(base?: string) {
-  // Default to the known Render backend for this repository
+  // In development, use relative path (proxied by Vite)
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  // In production, use the configured backend URL
   if (!base) return 'https://blog-backend-e4j1.onrender.com';
   return base.replace(/\/$/, '');
 }
@@ -123,6 +127,9 @@ export async function deleteRequest(endpoint: string) {
 /**
  * DELETE request and parse JSON
  */
-export async function deleteJson(endpoint: string) {
-  return apiCallJson(endpoint, { method: 'DELETE' });
+export async function deleteJson(endpoint: string, data?: Record<string, any>) {
+  return apiCallJson(endpoint, {
+    method: 'DELETE',
+    body: data ? JSON.stringify(data) : undefined,
+  });
 }
