@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  Home, 
-  Search, 
-  PenSquare, 
-  Bell, 
-  User, 
-  Menu, 
+import {
+  Home,
+  Search,
+  PenSquare,
+  Bell,
+  User,
+  Menu,
   X,
   Compass,
   LogOut,
@@ -28,6 +28,7 @@ import { useUser } from "@/context/UserContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RealtimeStatusIndicator } from "@/components/RealtimeStatusIndicator";
 import { useChatList } from "@/hooks/useChatList";
+import { useNotifications } from "@/context/NotificationProvider";
 
 export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -35,6 +36,7 @@ export function Navbar() {
   const location = useLocation();
   const { user } = useUser();
   const { chats } = useChatList();
+  const { unreadCount } = useNotifications();
 
   // Calculate total unread messages
   const totalUnreadMessages = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
@@ -115,7 +117,9 @@ export function Navbar() {
             <Link to="/notifications">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                )}
               </Button>
             </Link>
 

@@ -38,6 +38,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user: currentUser } = useUser();
 
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
     // Connect to real-time service if not already connected
     if (!realtimeService.isConnected()) {
       realtimeService.connect();
@@ -73,37 +79,83 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     })();
 
-    // Subscribe to notification events using the service's `on` API
-    const unsubscribe = realtimeService.on('notification:new', (data: any) => {
+    // Subscribe to all relevant events
+    const handleEvent = (data: any, type: Notification['type']) => {
       // If the notification is targeted to a recipient, only show it to that user
       if (data.recipientId && currentUser && data.recipientId !== currentUser.id) {
         return;
       }
+
+      // Don't notify if the actor is the current user (e.g. liked their own post)
+      if (data.actor?.id === currentUser?.id) {
+        return;
+      }
+
       const notification: Notification = {
         id: `notif-${Date.now()}-${Math.random()}`,
-        type: data.type || 'like',
-        message: data.message,
+        type,
+        message: data.message || getMessageForType(type, data),
         actor: data.actor,
         targetBlog: data.targetBlog,
-        timestamp: new Date(data.timestamp),
+        timestamp: new Date(data.timestamp || Date.now()),
         read: false,
       };
 
       setNotifications((prev) => [notification, ...prev]);
 
-      // Show toast for new notification
+      // Show toast
       toast({
-        title: `New ${data.type}!`,
-        description: data.message,
+        title: getTitleForType(type),
+        description: notification.message,
         duration: 5000,
       });
-    });
+
+      // Show system notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(getTitleForType(type), {
+            body: notification.message,
+            icon: '/favicon.ico',
+          });
+        } catch (e) {
+          console.error('Failed to show system notification:', e);
+        }
+      }
+    };
+
+    const unsubNotif = realtimeService.on('notification:new', (data) => handleEvent(data, data.type || 'like'));
+    const unsubLike = realtimeService.on('like:added', (data) => handleEvent(data, 'like'));
+    const unsubComment = realtimeService.on('comment:added', (data) => handleEvent(data, 'comment'));
+    const unsubFollow = realtimeService.on('follow:added', (data) => handleEvent(data, 'follow'));
+
+    // Helper to generate messages if backend doesn't send one
+    const getMessageForType = (type: string, data: any) => {
+      const actorName = data.actor?.name || 'Someone';
+      const blogTitle = data.targetBlog?.title || 'your blog';
+      switch (type) {
+        case 'like': return `${actorName} liked "${blogTitle}"`;
+        case 'comment': return `${actorName} commented on "${blogTitle}"`;
+        case 'follow': return `${actorName} started following you`;
+        default: return 'New notification';
+      }
+    };
+
+    const getTitleForType = (type: string) => {
+      switch (type) {
+        case 'like': return 'New Like ❤️';
+        case 'comment': return 'New Comment 💬';
+        case 'follow': return 'New Follower 👥';
+        default: return 'Notification 🔔';
+      }
+    };
 
     return () => {
-      // Cleanup subscription
-      unsubscribe();
+      unsubNotif();
+      unsubLike();
+      unsubComment();
+      unsubFollow();
     };
-  }, [toast]);
+  }, [toast, currentUser]);
 
   const markAsRead = (id: string) => {
     setNotifications((prev) =>
